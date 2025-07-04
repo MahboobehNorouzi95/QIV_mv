@@ -52,6 +52,10 @@ DEFAULTS = {
     "outcome_type": "continuous",
     "output_dir": "quantile_iv_estimate",
     "activation": "GELU",
+<<<<<<< HEAD
+=======
+    "outcome_dim": 1,
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
 }
 # fmt: on
 
@@ -209,7 +213,12 @@ class OutcomeMLP(OutcomeMLPBase):
         binary_outcome: bool = False,
         add_input_layer_batchnorm: bool = False,
         add_hidden_layer_batchnorm: bool = False,
+<<<<<<< HEAD
         activations: Iterable[nn.Module] = [nn.GELU()]
+=======
+        activations: Iterable[nn.Module] = [nn.GELU()],
+        outcome_dim: int = 1
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
     ):
         super().__init__(
             exposure_network=exposure_network,
@@ -220,7 +229,12 @@ class OutcomeMLP(OutcomeMLPBase):
             binary_outcome=binary_outcome,
             add_input_layer_batchnorm=add_input_layer_batchnorm,
             add_hidden_layer_batchnorm=add_hidden_layer_batchnorm,
+<<<<<<< HEAD
             activations=activations
+=======
+            activations=activations,
+            outcome_dim=outcome_dim
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
         )
 
     def forward(  # type: ignore
@@ -237,7 +251,13 @@ class OutcomeMLP(OutcomeMLPBase):
         n_q = x_hats.size(1)
         n = ivs.size(0)
 
+<<<<<<< HEAD
         y_hat = torch.zeros((n, 1), device=self.device)  # type: ignore
+=======
+        # Get outcome dimension from the network's output layer
+        outcome_dim = self.mlp[-1].out_features
+        y_hat = torch.zeros((n, outcome_dim), device=self.device)  # type: ignore
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
 
         for j in range(n_q):
             y_hat += self.mlp(_cat(x_hats[:, [j]], covars)) / n_q
@@ -389,6 +409,12 @@ def train_outcome_model(
     info("Training outcome model.")
     n_covars = train_dataset[0][3].numel()
 
+<<<<<<< HEAD
+=======
+    # Get outcome dimension from training data
+    outcome_dim = train_dataset[0][1].numel()
+    
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
     model = OutcomeMLP(
         exposure_network=exposure_network,
         input_size=1 + n_covars,
@@ -398,6 +424,10 @@ def train_outcome_model(
         add_input_layer_batchnorm=add_input_batchnorm,
         binary_outcome=binary_outcome,
         activations=[activation],
+<<<<<<< HEAD
+=======
+        outcome_dim=outcome_dim,
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
     )
 
     info(f"Loss: {model.loss}")
@@ -652,6 +682,7 @@ def save_estimator_statistics(
 ):
     # Save the causal effect at over the domain.
     xs = torch.linspace(domain[0], domain[1], 500).reshape(-1, 1)
+<<<<<<< HEAD
     ys = estimator.avg_iv_reg_function(xs).reshape(-1)
     df = pd.DataFrame({"x": xs.reshape(-1), "y_do_x": ys})
 
@@ -668,6 +699,43 @@ def save_estimator_statistics(
             zorder=-1,
             label="Prediction interval"
         )
+=======
+    ys = estimator.avg_iv_reg_function(xs)
+    
+    # Create dataframe with multiple outcome columns if needed
+    df_data = {"x": xs.reshape(-1)}
+    
+    if ys.dim() == 1:
+        # Single outcome
+        df_data["y_do_x"] = ys.reshape(-1)
+    else:
+        # Multiple outcomes
+        for i in range(ys.size(1)):
+            df_data[f"y_do_x_{i+1}"] = ys[:, i]
+    
+    df = pd.DataFrame(df_data)
+
+    plt.figure()
+    
+    if ys.dim() == 1:
+        plt.scatter(df["x"], df["y_do_x"], label="Estimated IV regression", s=3)
+        
+        if "y_do_x_lower" in df.columns:
+            # Add the CI on the plot.
+            plt.fill_between(
+                df["x"],
+                df["y_do_x_lower"],  # type: ignore
+                df["y_do_x_upper"],  # type: ignore
+                color="#dddddd",
+                zorder=-1,
+                label="Prediction interval"
+            )
+    else:
+        # Multiple outcomes - plot each one
+        for i in range(ys.size(1)):
+            plt.scatter(df["x"], df[f"y_do_x_{i+1}"], 
+                       label=f"Outcome {i+1}", s=3)
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
 
     plt.xlabel("X")
     plt.ylabel("Y")
@@ -688,6 +756,16 @@ def configure_argparse(parser) -> None:
     )
 
     parser.add_argument("--output-dir", default=DEFAULTS["output_dir"])
+<<<<<<< HEAD
+=======
+    
+    parser.add_argument(
+        "--outcome-dim",
+        type=int,
+        default=DEFAULTS["outcome_dim"],
+        help="Number of outcome dimensions for multivariable outcomes."
+    )
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
 
     parser.add_argument(
         "--fast",

@@ -43,7 +43,20 @@ class IVDataset(Dataset):
         sampling_weights: Optional[torch.Tensor] = None
     ):
         self.exposure = exposure.reshape(-1, 1)
+<<<<<<< HEAD
         self.outcome = outcome.reshape(-1, 1)
+=======
+        
+        # Auto-detect outcome dimension if not provided
+        if outcome_dim is None:
+            if outcome.dim() == 1:
+                outcome_dim = 1
+            else:
+                outcome_dim = outcome.size(-1)
+        
+        self.outcome = outcome.reshape(-1, outcome_dim)
+        self.outcome_dim = outcome_dim
+>>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
         self.ivs = ivs
         self.covariables = covariables
         self.sampling_weights = sampling_weights
