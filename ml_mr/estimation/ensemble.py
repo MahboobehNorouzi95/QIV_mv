@@ -1,7 +1,7 @@
 from typing import Optional, Callable, Union
 
 from .core import MREstimator, MREstimatorWithUncertainty, load_estimator
-from ..log_utils import info, warn
+from ..logging import info, warn
 
 import torch
 

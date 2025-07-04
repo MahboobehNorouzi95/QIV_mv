@@ -36,7 +36,7 @@ import json
 import pandas as pd
 import numpy as np
 
-from .. import log_utils
+from .. import logging
 
 
 class Simulation:

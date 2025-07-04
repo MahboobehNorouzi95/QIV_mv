@@ -44,7 +44,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
-from ...log_utils import warn
+from ...logging import warn
 from ..core import MREstimator
 from ...utils.data import IVDataset
 from .linear_two_stage import twosls

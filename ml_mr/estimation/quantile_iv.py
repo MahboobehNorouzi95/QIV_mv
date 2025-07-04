@@ -15,7 +15,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, random_split
 import pytorch_lightning as pl
 
-from ..log_utils import info
+from ..logging import info
 from ..utils import (
     default_validate_args,
     parse_project_and_run_name,
@@ -52,7 +52,6 @@ DEFAULTS = {
     "outcome_type": "continuous",
     "output_dir": "quantile_iv_estimate",
     "activation": "GELU",
-    "outcome_dim": 3,
 }
 # fmt: on
 
@@ -210,8 +209,7 @@ class OutcomeMLP(OutcomeMLPBase):
         binary_outcome: bool = False,
         add_input_layer_batchnorm: bool = False,
         add_hidden_layer_batchnorm: bool = False,
-        activations: Iterable[nn.Module] = [nn.GELU()],
-        outcome_dim: int = 1        
+        activations: Iterable[nn.Module] = [nn.GELU()]
     ):
         super().__init__(
             exposure_network=exposure_network,
@@ -222,20 +220,8 @@ class OutcomeMLP(OutcomeMLPBase):
             binary_outcome=binary_outcome,
             add_input_layer_batchnorm=add_input_layer_batchnorm,
             add_hidden_layer_batchnorm=add_hidden_layer_batchnorm,
-            activations=activations,
-        )
-
-        self.outcome_dim = outcome_dim
-
-        self.mlp = MLP(
-            input_size=input_size,
-            hidden=hidden,
-            out=outcome_dim,
-            add_input_layer_batchnorm=add_input_layer_batchnorm,
-            add_hidden_layer_batchnorm=add_hidden_layer_batchnorm,
             activations=activations
         )
-
 
     def forward(  # type: ignore
         self,
@@ -251,13 +237,10 @@ class OutcomeMLP(OutcomeMLPBase):
         n_q = x_hats.size(1)
         n = ivs.size(0)
 
-        # Get outcome dimension from the network's output layer
-        outcome_dim = self.mlp.mlp[-1].out_features
+        y_hat = torch.zeros((n, 1), device=self.device)  # type: ignore
 
         for j in range(n_q):
             y_hat += self.mlp(_cat(x_hats[:, [j]], covars)) / n_q
-
-        print(f"[OutcomeMLP.forward] x_hats shape: {x_hats.shape}, output y_hat shape: {y_hat.shape}")
 
         return y_hat
 
@@ -320,24 +303,20 @@ def main(args: argparse.Namespace) -> None:
     # or quantiles will be calculated including the validation dataset.
     # This should not have a big impact...
     dataset = IVDatasetWithGenotypes.from_argparse_namespace(args)
-    print(f"[DEBUG] Outcome tensor shape: {dataset[0][1].shape}")
-    print(f"[DEBUG] Number of outcomes parsed: {len(args.outcomes)}")
-
 
     # Automatically add the model hyperparameters.
     kwargs = {k: v for k, v in vars(args).items() if k in DEFAULTS.keys()}
     del kwargs["outcome_type"]
 
     fit_quantile_iv(
-      dataset=dataset,
-      fast=args.fast,
-      wandb_project=args.wandb_project,
-      nmqn=args.nmqn,
-      resample=args.resample,
-      binary_outcome=args.outcome_type == "binary",
-      **kwargs,
-  )
-
+        dataset=dataset,
+        fast=args.fast,
+        wandb_project=args.wandb_project,
+        nmqn=args.nmqn,
+        resample=args.resample,
+        binary_outcome=args.outcome_type == "binary",
+        **kwargs,
+    )
 
 
 def train_exposure_model(
@@ -410,8 +389,16 @@ def train_outcome_model(
     info("Training outcome model.")
     n_covars = train_dataset[0][3].numel()
 
-    # Get outcome dimension from training data
-    outcome_dim = train_dataset[0][1].numel()
+    model = OutcomeMLP(
+        exposure_network=exposure_network,
+        input_size=1 + n_covars,
+        lr=learning_rate,
+        weight_decay=weight_decay,
+        hidden=hidden,
+        add_input_layer_batchnorm=add_input_batchnorm,
+        binary_outcome=binary_outcome,
+        activations=[activation],
+    )
 
     info(f"Loss: {model.loss}")
 
@@ -455,7 +442,6 @@ def fit_quantile_iv(
     activation: str = DEFAULTS["activation"],  # type: ignore
     accelerator: str = DEFAULTS["accelerator"],  # type: ignore
     wandb_project: Optional[str] = None,
-    outcome_dim: int = 1,  
 ) -> QuantileIVEstimator:
     if resample:
         dataset = resample_dataset(dataset)  # type: ignore
@@ -544,7 +530,6 @@ def fit_quantile_iv(
             ),
         )
 
-
     outcome_class, outcome_val_loss = train_outcome_model(
         train_dataset=stg2_train_dataset,
         val_dataset=stg2_val_dataset,
@@ -559,7 +544,7 @@ def fit_quantile_iv(
         max_epochs=outcome_max_epochs,
         accelerator=accelerator,
         binary_outcome=binary_outcome,
-        wandb_project=wandb_project,
+        wandb_project=wandb_project
     )
 
     meta["outcome_val_loss"] = outcome_val_loss
@@ -590,12 +575,10 @@ def fit_quantile_iv(
 
     if not fast:
         save_estimator_statistics(
-        estimator,
-        domain=meta["domain"],
-        output_prefix=os.path.join(output_dir, "causal_estimates"),
-        outcome_dim=outcome_dim,  # ← add this line
-    )
-
+            estimator,
+            domain=meta["domain"],
+            output_prefix=os.path.join(output_dir, "causal_estimates"),
+        )
 
     if wandb_project is not None:
         import wandb
@@ -666,46 +649,32 @@ def save_estimator_statistics(
     estimator: QuantileIVEstimator,
     domain: Tuple[float, float],
     output_prefix: str = "causal_estimates",
-    outcome_dim: int = 1
 ):
-    # Save the causal effect over the domain.
+    # Save the causal effect at over the domain.
     xs = torch.linspace(domain[0], domain[1], 500).reshape(-1, 1)
-    ys = estimator.avg_iv_reg_function(xs)
-    print(f"[save_estimator_statistics] ys shape: {ys.shape}")
+    ys = estimator.avg_iv_reg_function(xs).reshape(-1)
+    df = pd.DataFrame({"x": xs.reshape(-1), "y_do_x": ys})
 
-    # Prepare data dictionary for CSV
-    df_data = {"x": xs.reshape(-1).numpy()}
+    plt.figure()
+    plt.scatter(df["x"], df["y_do_x"], label="Estimated IV regression", s=3)
 
-    if ys.dim() == 1:
-        # Single outcome
-        df_data["y_do_x"] = ys.reshape(-1).numpy()
+    if "y_do_x_lower" in df.columns:
+        # Add the CI on the plot.
+        plt.fill_between(
+            df["x"],
+            df["y_do_x_lower"],  # type: ignore
+            df["y_do_x_upper"],  # type: ignore
+            color="#dddddd",
+            zorder=-1,
+            label="Prediction interval"
+        )
 
-        # Plot single outcome
-        plt.figure()
-        plt.scatter(df_data["x"], df_data["y_do_x"], label="Estimated IV regression", s=3)
-        plt.xlabel("X")
-        plt.ylabel("Y")
-        plt.legend()
-        plt.savefig(f"{output_prefix}.png", dpi=600)
-        plt.clf()
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.legend()
+    plt.savefig(f"{output_prefix}.png", dpi=600)
+    plt.clf()
 
-    else:
-        # Multivariable outcome
-        for i in range(ys.size(1)):
-            col_name = f"y_do_x_{i+1}"
-            df_data[col_name] = ys[:, i].numpy()
-
-            # Plot each outcome separately
-            plt.figure()
-            plt.scatter(df_data["x"], df_data[col_name], label=f"Outcome {i+1}", s=3)
-            plt.xlabel("X")
-            plt.ylabel(f"Y{i+1}")
-            plt.legend()
-            plt.savefig(f"{output_prefix}_Y{i+1}.png", dpi=600)
-            plt.clf()
-
-    # Save all to one CSV
-    df = pd.DataFrame(df_data)
     df.to_csv(f"{output_prefix}.csv", index=False)
 
 
@@ -719,20 +688,6 @@ def configure_argparse(parser) -> None:
     )
 
     parser.add_argument("--output-dir", default=DEFAULTS["output_dir"])
-    
-    parser.add_argument(
-        "--outcome-dim",
-        type=int,
-        default=DEFAULTS["outcome_dim"],
-        help="Number of outcome dimensions for multivariable outcomes."
-    )
-
-    parser.add_argument(
-        "--outcome-dim",
-        type=int,
-        default=DEFAULTS["outcome_dim"],
-        help="Number of outcome dimensions for multivariable outcomes."
-    )
 
     parser.add_argument(
         "--fast",
@@ -819,12 +774,4 @@ def configure_argparse(parser) -> None:
 
 # Standard names for estimators.
 estimate = fit_quantile_iv
-load = QuantileIVEstimator.from_results
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    configure_argparse(parser)
-    args = parser.parse_args()
-    main(args)
-
 load = QuantileIVEstimator.from_results
