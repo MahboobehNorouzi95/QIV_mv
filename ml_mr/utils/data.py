@@ -44,6 +44,7 @@ class IVDataset(Dataset):
     ):
         self.exposure = exposure.reshape(-1, 1)
 <<<<<<< HEAD
+<<<<<<< HEAD
         self.outcome = outcome.reshape(-1, 1)
 =======
         
@@ -57,6 +58,9 @@ class IVDataset(Dataset):
         self.outcome = outcome.reshape(-1, outcome_dim)
         self.outcome_dim = outcome_dim
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+        self.outcome = outcome.reshape(-1, 1)
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
         self.ivs = ivs
         self.covariables = covariables
         self.sampling_weights = sampling_weights

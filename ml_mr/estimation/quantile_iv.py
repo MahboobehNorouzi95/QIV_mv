@@ -53,9 +53,12 @@ DEFAULTS = {
     "output_dir": "quantile_iv_estimate",
     "activation": "GELU",
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     "outcome_dim": 1,
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
 }
 # fmt: on
 
@@ -214,11 +217,15 @@ class OutcomeMLP(OutcomeMLPBase):
         add_input_layer_batchnorm: bool = False,
         add_hidden_layer_batchnorm: bool = False,
 <<<<<<< HEAD
+<<<<<<< HEAD
         activations: Iterable[nn.Module] = [nn.GELU()]
 =======
         activations: Iterable[nn.Module] = [nn.GELU()],
         outcome_dim: int = 1
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+        activations: Iterable[nn.Module] = [nn.GELU()]
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
     ):
         super().__init__(
             exposure_network=exposure_network,
@@ -230,6 +237,9 @@ class OutcomeMLP(OutcomeMLPBase):
             add_input_layer_batchnorm=add_input_layer_batchnorm,
             add_hidden_layer_batchnorm=add_hidden_layer_batchnorm,
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
             activations=activations
 =======
             activations=activations,
@@ -252,12 +262,16 @@ class OutcomeMLP(OutcomeMLPBase):
         n = ivs.size(0)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         y_hat = torch.zeros((n, 1), device=self.device)  # type: ignore
 =======
         # Get outcome dimension from the network's output layer
         outcome_dim = self.mlp[-1].out_features
         y_hat = torch.zeros((n, outcome_dim), device=self.device)  # type: ignore
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+        y_hat = torch.zeros((n, 1), device=self.device)  # type: ignore
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
 
         for j in range(n_q):
             y_hat += self.mlp(_cat(x_hats[:, [j]], covars)) / n_q
@@ -410,11 +424,14 @@ def train_outcome_model(
     n_covars = train_dataset[0][3].numel()
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     # Get outcome dimension from training data
     outcome_dim = train_dataset[0][1].numel()
     
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
     model = OutcomeMLP(
         exposure_network=exposure_network,
         input_size=1 + n_covars,
@@ -425,9 +442,12 @@ def train_outcome_model(
         binary_outcome=binary_outcome,
         activations=[activation],
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         outcome_dim=outcome_dim,
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
     )
 
     info(f"Loss: {model.loss}")
@@ -683,6 +703,9 @@ def save_estimator_statistics(
     # Save the causal effect at over the domain.
     xs = torch.linspace(domain[0], domain[1], 500).reshape(-1, 1)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
     ys = estimator.avg_iv_reg_function(xs).reshape(-1)
     df = pd.DataFrame({"x": xs.reshape(-1), "y_do_x": ys})
 
@@ -699,6 +722,7 @@ def save_estimator_statistics(
             zorder=-1,
             label="Prediction interval"
         )
+<<<<<<< HEAD
 =======
     ys = estimator.avg_iv_reg_function(xs)
     
@@ -736,6 +760,8 @@ def save_estimator_statistics(
             plt.scatter(df["x"], df[f"y_do_x_{i+1}"], 
                        label=f"Outcome {i+1}", s=3)
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
 
     plt.xlabel("X")
     plt.ylabel("Y")
@@ -757,6 +783,7 @@ def configure_argparse(parser) -> None:
 
     parser.add_argument("--output-dir", default=DEFAULTS["output_dir"])
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     
     parser.add_argument(
@@ -766,6 +793,8 @@ def configure_argparse(parser) -> None:
         help="Number of outcome dimensions for multivariable outcomes."
     )
 >>>>>>> parent of 4d9e355 (Merge pull request #4 from MahboobehNorouzi95/my_feature_branch)
+=======
+>>>>>>> parent of 9a32a6f (Merge pull request #5 from pgx-ml-lab/mv_outcome)
 
     parser.add_argument(
         "--fast",
